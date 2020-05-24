@@ -1,171 +1,95 @@
-package crux;
+package crux.frontend;
 
+import crux.frontend.ast.Position;
+import crux.frontend.types.*;
+
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.LinkedHashMap;
 
-/**
- * A table of symbols.
- */
-@SuppressWarnings("unchecked") // Needed to suppress warning from whoIsMyFather. I know what I'm doing here.
-public class SymbolTable extends AbstractSymbolTable {
-	/* Functions that are available as a part of the crux language. */
-    public static final String[] PREDEF_FUNCS = { 
-        "readInt",
-        "readFloat",
-        "printBool",
-        "printInt",
-        "printFloat",
-        "println"
-    };
+final class SymbolTable {
+    private final PrintStream err;
+    private final List<Map<String, Symbol>> symbolScopes = new ArrayList<>();
 
-    /* The parent scope of this table. */
-    private AbstractSymbolTable parent;
+    private boolean encounteredError = false;
 
-    /* The known symbols and names in this scope. */
-    private Map<String, Symbol> table;
-
-    /**
-     * Construct a new symbol table.
-     */
-    public SymbolTable() {
-        this(AbstractSymbolTable.NULL);
+    SymbolTable(PrintStream err) {
+        System.out.println("111111");
+        this.err = err;
+        // TODO
     }
 
-    /**
-     * Construct a new symbol table with a parent.
-     * @param parent The parent of this table.
-     */
-    public SymbolTable(AbstractSymbolTable parent) {
-		super(parent.depth + 1);
-        this.parent = parent;
-        table = new LinkedHashMap<String, Symbol>();
+    boolean hasEncounteredError() {
+        return encounteredError;
     }
 
-    /**
-     * Look up a symbol name in the table.
-     * @param name The symbol to look up.
-     * @return The found symbol.
-     * @throws SymbolNotFoundError when the symbols was not found.
-     */
-    public Symbol lookup(String name) throws SymbolNotFoundError {
-		Symbol target = get(name);
-		if (target != null) {
-			return target;
-		} else {
-			throw new SymbolNotFoundError(name);
-		}
+    void enter() {
+        System.out.println("222222");
+        Map< String,Symbol> newS = new HashMap< String,Symbol>();
+        symbolScopes.add(newS);
+        // TODO
+        
     }
 
-    /**
-     * Get a symbols with a given name.
-     * @param name The symbol name.
-     * @return The symbol.
-     */
-    private Symbol get(String name) {
-        Symbol target = table.get(name);
-        if (target == null) {
-        	target = parent.lookup(name);
-        } 
-		return target;
+    void exit() {
+        System.out.println("3333333");
+        symbolScopes.remove(symbolScopes.size()-1);
+        // TODO
     }
 
-    /**
-     * Insert a new name in the table.
-     * @param name The new symol name to insert.
-     * @return The new symbol inserted.
-     * @throws RedeclarationError if the symbol already existed.
-     */
-    public Symbol insert(String name) throws RedeclarationError {
-        Symbol symbol = table.get(name);
-        if (symbol != null ) {
-        	throw new RedeclarationError(symbol);
-        } 
-		symbol = new Symbol(name);
-		table.put(name, symbol);
-		return symbol;
-    }
+    Symbol add(Position pos, String name) {
+        System.out.println("4444444");
+        System.out.println(name);
+        // TODO
+        Symbol sy = new Symbol(name);
 
-    /**
-     * Get a string representation of the symbol table.
-     * @return A string representation of all the scopes.
-     */
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append(parent.toString());
-
-        String indent = new String();
-        for (int i = 0; i < depth; i++) {
-        	indent += "  ";
+//        if (symbolScopes.get(symbolScopes.size() - 1).containsKey(name)) {
+//            err.printf("ResolveSymbolError%s[Could not find %s.]%n", pos, name);
+//            encounteredError = true;
+//            return new Symbol(name, "ResolveSymbolError");
+//        }
+        if (symbolScopes.get(symbolScopes.size() - 1).containsKey(name)){
+            System.out.println("already IN");
         }
+        symbolScopes.get(symbolScopes.size() - 1).put(name,sy);
+        System.out.println(symbolScopes.toString());
+        return sy;
+    }
 
-        for (Symbol s : table.values()) {
-            sb.append(indent + s.toString() + "\n");
+    Symbol add(Position pos, String name, Type type) {
+        System.out.println("5555555555555");
+        System.out.println(name);
+        // TODO
+        Symbol sy = new Symbol(name,type);
+        Map m = new HashMap<String,Symbol>();
+        m.put(name, sy);
+        symbolScopes.add(m);
+        return sy;
+    }
+
+    Symbol lookup(Position pos, String name) {
+        System.out.println("666666");
+        System.out.println(name);
+        var symbol = find(name);
+        if (symbol == null) {
+            err.printf("ResolveSymbolError%s[Could not find %s.]%n", pos, name);
+            encounteredError = true;
+            return new Symbol(name, "ResolveSymbolError");
+        } else {
+            return symbol;
         }
-        return sb.toString();
     }
 
-    /**
-     * Create a new child symbol table from this table.
-     * @return A child symbol table.
-     */
-    public SymbolTable mutate() {
-    	return new SymbolTable(this);
-    }
-
-    /**
-     * Get the parent of this table.
-     * Uses helper method because the root table's parent (NULL) should not be
-     * exposed so we have to determine this in a nice way.
-     */
-    public SymbolTable getParent() {
-		return parent.whoIsMyFather(this);
-    }
-
-    /**
-     * The father of a child is its parent for normal tables.
-     */
-    protected SymbolTable whoIsMyFather(AbstractSymbolTable child) {
-    	return this; // Luke, I'm your father.
-    }
-}
-
-/**
- * An error representing the act of not finding a symbol in the table.
- */
-class SymbolNotFoundError extends Error {
-    private static final long serialVersionUID = 1L;
-
-    /* The name of the not found symol. */
-    private String name;
-
-    /**
-     * Construct a new error for a give symbol name.
-     * @param The errornous symbol name.
-     */
-    SymbolNotFoundError(String name) {
-        this.name = name;
-    }
-
-    /**
-     * Get the name of the errornous symbol.
-     * @return The symbol name.
-     */
-    public String name() {
-        return name;
-    }
-}
-
-/**
- * An error representing the act redeclaring an symbol.
- */
-class RedeclarationError extends Error {
-    private static final long serialVersionUID = 1L;
-
-    /**
-     * Construct a new error for the given symbol.
-     * @parmam sym The redeclared symbol.
-     */
-    public RedeclarationError(Symbol sym) {
-        super("Symbol " + sym + " being redeclared.");
+    private Symbol find(String name) {
+        System.out.println(7777777);
+        // TODO
+        for(var i=0; i<this.symbolScopes.size();i++){
+            if (symbolScopes.get(i).containsKey(name)){
+                return symbolScopes.get(i).get(name);
+            }
+        }
+        return null;
     }
 }
